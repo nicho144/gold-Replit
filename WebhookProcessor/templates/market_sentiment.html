@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Market Sentiment Analysis{% endblock %}
+
+{% block content %}
+<div class="jumbotron mb-4">
+    <h1 class="display-5">Market Sentiment Analysis</h1>
+    <p class="lead">Analysis of market sentiment (VIX) and its relationship to gold</p>
+    <hr class="my-4">
+    <p>Data timestamp: {{ data.timestamp|default('N/A') }}</p>
+</div>
+
+<div class="row">
+    <!-- Current Market Data Cards -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h4>Current Market Data</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark border-secondary text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">Gold Price</h5>
+                                <p class="display-6">${{ data.gold_price|default('--') }}</p>
+                                <p class="text-{{ 'success' if data.gold_change_pct|default(0) > 0 else 'danger' }}">
+                                    {{ data.gold_change_pct|default(0) }}% (30d)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark border-secondary text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">VIX (Fear Index)</h5>
+                                <p class="display-6">{{ data.vix|default('--') }}</p>
+                                <p class="text-{{ 'danger' if data.vix_change_pct|default(0) > 0 else 'success' }}">
+                                    {{ data.vix_change_pct|default(0) }}% (30d)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h4>Sentiment Analysis</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Market Sentiment</h5>
+                    <p>{{ data.market_sentiment|default('Data not available') }}</p>
+                </div>
+                <div class="mb-3">
+                    <h5>Gold Outlook</h5>
+                    <p>{{ data.gold_outlook|default('Data not available') }}</p>
+                </div>
+                <div class="mb-3">
+                    <h5>Volatility Trend</h5>
+                    <p>{{ data.volatility_trend|default('Data not available') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Correlation Analysis -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h4>Correlation Analysis</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-dark border-secondary text-center">
+                            <div class="card-body">
+                                <h5 class="card-title">Correlation Coefficient</h5>
+                                <p class="display-6">{{ data.correlation_coefficient|default('--') }}</p>
+                                <p>{{ data.correlation_interpretation|default('Data not available') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">Trading Implications</h5>
+                                <ul class="list-group list-group-flush bg-dark">
+                                    {% if data.implications %}
+                                        {% for implication in data.implications %}
+                                            <li class="list-group-item bg-dark border-secondary">{{ implication }}</li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li class="list-group-item bg-dark border-secondary">Data not available</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Other Analysis Endpoints -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h3 class="mb-0">Other Analysis Endpoints</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/market/premarket" class="btn btn-outline-primary">Premarket Data</a>
+                    <a href="/market/gold/term-structure" class="btn btn-outline-primary">Gold Term Structure</a>
+                    <a href="/market/real-rates" class="btn btn-outline-primary">Real Interest Rates</a>
+                    <a href="/market/sentiment" class="btn btn-outline-primary">Market Sentiment</a>
+                    <a href="/market/gold-cycle" class="btn btn-outline-primary">Gold Cycle Analysis</a>
+                    <a href="/market/economic" class="btn btn-outline-primary">Economic Outlook</a>
+                    <a href="/market/comprehensive" class="btn btn-outline-success">Comprehensive Analysis</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Raw Data Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h4>Raw Data</h4>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                    Toggle
+                </button>
+            </div>
+            <div class="collapse" id="rawDataCollapse">
+                <div class="card-body">
+                    <pre id="json-display"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pretty-print JSON
+    const jsonData = {{ data|tojson }};
+    const jsonDisplay = document.getElementById('json-display');
+    
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+            json = JSON.stringify(json, undefined, 2);
+        }
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'json-number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'json-key';
+                } else {
+                    cls = 'json-string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'json-boolean';
+            } else if (/null/.test(match)) {
+                cls = 'json-null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+    
+    jsonDisplay.innerHTML = syntaxHighlight(jsonData);
+</script>
+{% endblock %}

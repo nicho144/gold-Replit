@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Futures Market Analysis</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">Futures Market Analysis</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">API Docs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/docs-custom">User Guide</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1 class="mb-4">Futures Market Analysis API Documentation</h1>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <div class="list-group mb-4">
+                    <a href="#overview" class="list-group-item list-group-item-action bg-dark text-light border-secondary">Overview</a>
+                    <a href="#key-concepts" class="list-group-item list-group-item-action bg-dark text-light border-secondary">Key Concepts</a>
+                    <a href="#api-endpoints" class="list-group-item list-group-item-action bg-dark text-light border-secondary">API Endpoints</a>
+                    <a href="#usage-examples" class="list-group-item list-group-item-action bg-dark text-light border-secondary">Usage Examples</a>
+                    <a href="#ticker-guide" class="list-group-item list-group-item-action bg-dark text-light border-secondary">Ticker Symbol Guide</a>
+                </div>
+            </div>
+            
+            <div class="col-md-9">
+                <section id="overview" class="mb-5">
+                    <h2>Overview</h2>
+                    <p>The Futures Market Analysis API provides tools to detect potential market exhaustion signals based on term structure, physical demand, and price action in futures markets.</p>
+                    <p>This API is particularly useful for:</p>
+                    <ul>
+                        <li>Commodity traders looking for market turning points</li>
+                        <li>Portfolio managers monitoring roll yield risk</li>
+                        <li>Risk managers assessing market conditions</li>
+                        <li>Technical analysts incorporating term structure into their analysis</li>
+                    </ul>
+                </section>
+                
+                <section id="key-concepts" class="mb-5">
+                    <h2>Key Concepts</h2>
+                    
+                    <div class="key-concept">
+                        <h4>Contango and Backwardation</h4>
+                        <p>These are the two primary states of a futures term structure:</p>
+                        <ul>
+                            <li><strong>Contango:</strong> When future delivery prices are higher than spot prices (upward sloping curve)</li>
+                            <li><strong>Backwardation:</strong> When future delivery prices are lower than spot prices (downward sloping curve)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="key-concept">
+                        <h4>Term Structure</h4>
+                        <p>The relationship between futures contract prices across different delivery months. The API analyzes this structure to identify potential market turning points.</p>
+                    </div>
+                    
+                    <div class="key-concept">
+                        <h4>Market Exhaustion Signals</h4>
+                        <p>Combination of factors that may indicate a market is reaching an extreme and could reverse:</p>
+                        <ul>
+                            <li>Steep contango with declining physical demand</li>
+                            <li>Open interest spikes without price breakouts</li>
+                            <li>Divergence between price and fundamentals</li>
+                        </ul>
+                    </div>
+                </section>
+                
+                <section id="api-endpoints" class="mb-5">
+                    <h2>API Endpoints</h2>
+                    
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-header">
+                            <strong>POST /analyze</strong>
+                        </div>
+                        <div class="card-body">
+                            <p>Analyze futures market for potential exhaustion signals</p>
+                            
+                            <h5>Request Body</h5>
+                            <div class="code-block mb-3">
+{
+  "ticker_front": "GC=F",        // Front month contract ticker
+  "ticker_next": "GCM24.CMX",    // Next month contract ticker
+  "physical_demand": "declining", // "declining", "stable", or "rising"
+  "price_breakout": false        // Has price broken resistance?
+}
+                            </div>
+                            
+                            <h5>Response</h5>
+                            <div class="code-block">
+{
+  "signal": "BEARISH — Potential exhaustion",
+  "reasons": [
+    "Contango structure with steep_upward slope",
+    "Open interest spike with no price breakthrough",
+    "Physical demand declining"
+  ],
+  "recommendations": [
+    "Reduce long exposure in commodity ETFs or futures",
+    "Consider bear spreads or moving to cash",
+    "Watch roll yield drag on ETFs",
+    "Monitor basis risk carefully"
+  ],
+  "prices": {
+    "front_contract": 2391.5,
+    "next_contract": 2412.3,
+    "contango_spread": 20.8,
+    "contango_percentage": 0.87
+  },
+  "market_condition": "Exhaustion",
+  "term_structure": "steep_upward",
+  "confidence_score": 75,
+  "analysis_timestamp": "2023-05-10T15:43:21.123456"
+}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-header">
+                            <strong>GET /health</strong>
+                        </div>
+                        <div class="card-body">
+                            <p>Health check endpoint to verify API availability</p>
+                            
+                            <h5>Response</h5>
+                            <div class="code-block">
+{
+  "status": "healthy"
+}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="usage-examples" class="mb-5">
+                    <h2>Usage Examples</h2>
+                    
+                    <h4 class="mb-3">cURL Example</h4>
+                    <div class="code-block mb-4">
+curl -X POST https://your-domain.com/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ticker_front": "GC=F",
+    "ticker_next": "GCM24.CMX",
+    "physical_demand": "declining",
+    "price_breakout": false
+  }'
+                    </div>
+                    
+                    <h4 class="mb-3">Python Example</h4>
+                    <div class="code-block mb-4">
+import requests
+
+url = "https://your-domain.com/analyze"
+payload = {
+    "ticker_front": "GC=F",
+    "ticker_next": "GCM24.CMX",
+    "physical_demand": "declining",
+    "price_breakout": False
+}
+
+response = requests.post(url, json=payload)
+result = response.json()
+print(result)
+                    </div>
+                    
+                    <h4 class="mb-3">JavaScript Example</h4>
+                    <div class="code-block">
+fetch('https://your-domain.com/analyze', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    ticker_front: 'GC=F',
+    ticker_next: 'GCM24.CMX',
+    physical_demand: 'declining',
+    price_breakout: false
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+                    </div>
+                </section>
+                
+                <section id="ticker-guide" class="mb-5">
+                    <h2>Ticker Symbol Guide</h2>
+                    
+                    <div class="card bg-dark border-secondary mb-4">
+                        <div class="card-header">
+                            Common Front Month Tickers
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>GC=F</strong> - Gold (COMEX)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>SI=F</strong> - Silver (COMEX)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>CL=F</strong> - Crude Oil (NYMEX)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>NG=F</strong> - Natural Gas (NYMEX)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>ZC=F</strong> - Corn (CBOT)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>ZW=F</strong> - Wheat (CBOT)
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>HG=F</strong> - Copper (COMEX)
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-header">
+                            Next Month Contract Format
+                        </div>
+                        <div class="card-body">
+                            <p>Next month contracts typically follow this pattern:</p>
+                            <p><code>[Symbol][Month Code][Year][.Exchange]</code></p>
+                            
+                            <h5 class="mt-3">Month Codes</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    F - January
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    G - February
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    H - March
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    J - April
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    K - May
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    M - June
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    N - July
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    Q - August
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    U - September
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    V - October
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    X - November
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    Z - December
+                                </li>
+                            </ul>
+                            
+                            <h5 class="mt-3">Examples</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>GCM24.CMX</strong> - Gold June 2024 contract on COMEX
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>CLN24.NYM</strong> - Crude Oil July 2024 contract on NYMEX
+                                </li>
+                                <li class="list-group-item bg-dark text-light border-secondary">
+                                    <strong>SIK24.CMX</strong> - Silver May 2024 contract on COMEX
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-5 py-4 border-top border-secondary">
+        <div class="container text-center">
+            <p class="text-muted mb-0">Futures Market Analysis API &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

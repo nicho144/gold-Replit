@@ -1,0 +1,781 @@
+{% extends "base.html" %}
+
+{% block title %}Gold Futures Curve Analysis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h1 class="mb-4">Gold Futures Curve Analysis</h1>
+      <p class="lead">Analysis of gold futures curve structure, spot-futures spread, and seasonal recommendations.</p>
+      
+      <!-- Timestamp -->
+      <div class="mb-4 text-muted small">
+        <i class="fas fa-clock"></i> Data as of: {{ data.timestamp }}
+      </div>
+      
+      <!-- Error message handling -->
+      {% if data.error is defined %}
+      <div class="alert alert-danger">
+        <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+        <p>{{ data.error }}</p>
+      </div>
+      {% elif data.enhancement_error is defined %}
+      <div class="alert alert-warning">
+        <h4><i class="fas fa-exclamation-triangle"></i> Warning</h4>
+        <p>Basic data loaded, but enhanced analysis encountered an error: {{ data.enhancement_error }}</p>
+      </div>
+      {% else %}
+      
+      <!-- Market Structure Summary -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Market Structure: 
+                {% if data.structure == "contango" %}
+                <span class="badge bg-primary">Contango</span>
+                {% elif data.structure == "backwardation" %}
+                <span class="badge bg-warning">Backwardation</span>
+                {% else %}
+                <span class="badge bg-secondary">Unknown</span>
+                {% endif %}
+              </h4>
+            </div>
+            <div class="card-body">
+              <p>{{ data.structure_description }}</p>
+              
+              <div class="row mt-3">
+                <div class="col-md-6">
+                  <p><strong>Curve Steepness:</strong> 
+                    <span class="{% if data.curve_steepness > 0 %}text-success{% else %}text-danger{% endif %}">
+                      {{ data.curve_steepness }}%
+                    </span> annualized
+                  </p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Spot-Futures Spread:</strong> 
+                    {% if data.spot_futures_spread is defined and data.spot_futures_spread is not none and data.spot_futures_spread != 'nan' %}
+                      <span class="{% if data.spot_futures_spread > 0 %}text-success{% else %}text-danger{% endif %}">
+                        ${{ data.spot_futures_spread }}
+                      </span>
+                      {% if data.spot_futures_trend is defined %}({{ data.spot_futures_trend }}){% endif %}
+                    {% else %}
+                      <span class="text-secondary">Data Unavailable</span>
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Market Direction: 
+                {% if data.is_bullish %}
+                <span class="badge bg-success">Bullish</span>
+                {% else %}
+                <span class="badge bg-danger">Bearish</span>
+                {% endif %}
+              </h4>
+            </div>
+            <div class="card-body">
+              <p>{{ data.direction_reason }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Contract Prices -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Contract Prices</h4>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-dark table-striped">
+                  <thead>
+                    <tr>
+                      <th>Symbol</th>
+                      <th>Expiry</th>
+                      <th>Price</th>
+                      <th>Premium vs. Spot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for contract in data.contracts %}
+                    <tr>
+                      <td>{{ contract.symbol }}</td>
+                      <td>{{ contract.expiry }}</td>
+                      <td>${{ contract.price }}</td>
+                      <td class="{% if contract.premium != 'N/A' and contract.premium > 0 %}text-success{% elif contract.premium != 'N/A' %}text-danger{% else %}text-secondary{% endif %}">
+                        {% if contract.premium != 'N/A' %}{{ contract.premium }}%{% else %}N/A{% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Curve Visualization (using simple HTML/CSS) -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Futures Curve Visualization</h4>
+            </div>
+            <div class="card-body">
+              <div class="futures-curve-container" style="height: 200px; position: relative;">
+                <div class="futures-curve-axis" style="position: absolute; top: 0; bottom: 0; left: 50px; width: 1px; background-color: rgba(255,255,255,0.2);"></div>
+                <div class="futures-curve-baseline" style="position: absolute; left: 50px; right: 50px; height: 1px; background-color: rgba(255,255,255,0.2); top: 50%;"></div>
+                
+                <!-- Generate curve points based on contract data -->
+                {% set baseline = 100 %}
+                {% set spacing = 150 %}
+                {% set max_value = 2000 %}
+                {% set first_price = data.contracts[0].price if data.contracts|length > 0 else 0 %}
+                
+                {% for i in range(data.contracts|length) %}
+                  {% if data.contracts|length > 0 %}
+                    {% set contract = data.contracts[i] %}
+                    {% set x_pos = 80 + i * spacing %}
+                    {% if contract.price is not none and first_price is not none and first_price > 0 %}
+                      {% set normalized_price = 100 - ((contract.price - first_price) / first_price * 1000) %}
+                      {% set y_pos = baseline - normalized_price if normalized_price is not none else baseline %}
+                      
+                      <div class="point" style="position: absolute; left: {{ x_pos }}px; top: {{ y_pos }}px; width: 10px; height: 10px; background-color: #ffd700; border-radius: 50%;"></div>
+                      <div class="label" style="position: absolute; left: {{ x_pos - 30 }}px; top: {{ y_pos + 15 }}px; width: 60px; text-align: center; font-size: 12px;">{{ contract.symbol }}</div>
+                      <div class="price" style="position: absolute; left: {{ x_pos - 30 }}px; top: {{ y_pos - 25 }}px; width: 60px; text-align: center; font-size: 12px;">${{ contract.price }}</div>
+                    {% else %}
+                      <div class="point" style="position: absolute; left: {{ x_pos }}px; top: {{ baseline }}px; width: 10px; height: 10px; background-color: #ffd700; border-radius: 50%;"></div>
+                      <div class="label" style="position: absolute; left: {{ x_pos - 30 }}px; top: {{ baseline + 15 }}px; width: 60px; text-align: center; font-size: 12px;">{{ contract.symbol }}</div>
+                      <div class="price" style="position: absolute; left: {{ x_pos - 30 }}px; top: {{ baseline - 25 }}px; width: 60px; text-align: center; font-size: 12px;">${{ contract.price }}</div>
+                    {% endif %}
+                    
+                    {% if i > 0 and contract.price is not none and first_price is not none and first_price > 0 %}
+                      {% set prev_x = 80 + (i-1) * spacing %}
+                      {% set prev_contract = data.contracts[i-1] %}
+                      
+                      {% if prev_contract.price is not none and first_price > 0 %}
+                        {% set prev_normalized_price = 100 - ((prev_contract.price - first_price) / first_price * 1000) %}
+                        {% set prev_y = baseline - prev_normalized_price if prev_normalized_price is not none else baseline %}
+                        {% set current_y = y_pos if y_pos is defined else baseline %}
+                        
+                        <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: visible;">
+                          <line x1="{{ prev_x + 5 }}" y1="{{ prev_y + 5 }}" x2="{{ x_pos + 5 }}" y2="{{ current_y + 5 }}" stroke="rgba(255, 215, 0, 0.7)" stroke-width="2" />
+                        </svg>
+                      {% endif %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              </div>
+              
+              <div class="mt-3">
+                <p class="small text-muted text-center">The gold line shows the term structure of futures prices across different expirations.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Spread Trade Recommendations -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Spread Trade Recommendations</h4>
+            </div>
+            <div class="card-body">
+              {% if data.spreads|length > 0 %}
+                <div class="row">
+                  {% for spread in data.spreads %}
+                  <div class="col-md-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                      <div class="card-header bg-dark">
+                        <h5>{{ spread.name }}</h5>
+                      </div>
+                      <div class="card-body">
+                        <p>{{ spread.description }}</p>
+                        <p><strong>Potential Return:</strong> <span class="text-success">{{ spread.expected_return }}%</span></p>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <p>No spread trade recommendations available at this time.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Real Interest Rates Section (FRED Data) -->
+      {% if data.interest_rates is defined %}
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Real Interest Rates 
+                <span class="badge {% if data.interest_rates.is_positive_real_rates %}bg-danger{% else %}bg-success{% endif %}">
+                  {{ "Positive" if data.interest_rates.is_positive_real_rates else "Negative" }} Real Rates
+                </span>
+              </h4>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h5>Treasury Yields (Nominal)</h5>
+                  <div class="table-responsive">
+                    <table class="table table-dark table-sm">
+                      <thead>
+                        <tr>
+                          <th>Timeframe</th>
+                          <th>Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if data.interest_rates.nominal_rates %}
+                          {% if data.interest_rates.nominal_rates.t10y is defined %}
+                          <tr>
+                            <td>10 Year Treasury</td>
+                            <td>{{ data.interest_rates.nominal_rates.t10y }}%</td>
+                          </tr>
+                          {% endif %}
+                          {% if data.interest_rates.nominal_rates.t5y is defined %}
+                          <tr>
+                            <td>5 Year Treasury</td>
+                            <td>{{ data.interest_rates.nominal_rates.t5y }}%</td>
+                          </tr>
+                          {% endif %}
+                          {% if data.interest_rates.nominal_rates.t2y is defined %}
+                          <tr>
+                            <td>2 Year Treasury</td>
+                            <td>{{ data.interest_rates.nominal_rates.t2y }}%</td>
+                          </tr>
+                          {% endif %}
+                        {% else %}
+                          <tr>
+                            <td colspan="2">No nominal rates data available</td>
+                          </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <h5>Real Rates & Inflation Expectations</h5>
+                  <div class="table-responsive">
+                    <table class="table table-dark table-sm">
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if data.interest_rates.real_rates %}
+                          {% if data.interest_rates.real_rates.t10y is defined %}
+                          <tr>
+                            <td>10Y Real Rate</td>
+                            <td class="{% if data.interest_rates.real_rates.t10y < 0 %}text-success{% else %}text-danger{% endif %}">
+                              {{ data.interest_rates.real_rates.t10y }}%
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% if data.interest_rates.real_rates.t5y is defined %}
+                          <tr>
+                            <td>5Y Real Rate</td>
+                            <td class="{% if data.interest_rates.real_rates.t5y < 0 %}text-success{% else %}text-danger{% endif %}">
+                              {{ data.interest_rates.real_rates.t5y }}%
+                            </td>
+                          </tr>
+                          {% endif %}
+                        {% endif %}
+                        
+                        {% if data.interest_rates.inflation_expectations %}
+                          {% if data.interest_rates.inflation_expectations.t10y is defined %}
+                          <tr>
+                            <td>10Y Inflation Expectation</td>
+                            <td>{{ data.interest_rates.inflation_expectations.t10y }}%</td>
+                          </tr>
+                          {% endif %}
+                          {% if data.interest_rates.inflation_expectations.t5y is defined %}
+                          <tr>
+                            <td>5Y Inflation Expectation</td>
+                            <td>{{ data.interest_rates.inflation_expectations.t5y }}%</td>
+                          </tr>
+                          {% endif %}
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Yield Curve and Real Rates Analysis -->
+              <div class="row mt-3">
+                <div class="col-md-6">
+                  {% if data.interest_rates.yield_curve is defined %}
+                  <div class="card bg-dark mb-3">
+                    <div class="card-header">
+                      <h5 class="mb-0">Treasury Yield Curve</h5>
+                    </div>
+                    <div class="card-body">
+                      <p><strong>10Y-2Y Spread:</strong> 
+                        <span class="{% if data.interest_rates.yield_curve.is_inverted %}text-danger{% else %}text-success{% endif %}">
+                          {{ data.interest_rates.yield_curve.spread_10y_2y }}% ({{ data.interest_rates.yield_curve.description }})
+                        </span>
+                      </p>
+                      
+                      {% if data.interest_rates.economic_outlook is defined %}
+                      <p><strong>Economic Outlook:</strong> {{ data.interest_rates.economic_outlook }}</p>
+                      {% endif %}
+                      
+                      {% if data.interest_rates.detailed_gold_analysis.yield_curve is defined %}
+                      <p class="mb-0"><strong>Impact on Gold:</strong> 
+                        <span class="
+                          {% if 'Bullish' in data.interest_rates.detailed_gold_analysis.yield_curve.status %}text-success
+                          {% elif 'Bearish' in data.interest_rates.detailed_gold_analysis.yield_curve.status %}text-danger
+                          {% else %}text-light{% endif %}">
+                          {{ data.interest_rates.detailed_gold_analysis.yield_curve.status }}
+                        </span>
+                      </p>
+                      <small class="text-light">{{ data.interest_rates.detailed_gold_analysis.yield_curve.explanation }}</small>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6">
+                  {% if data.interest_rates.detailed_gold_analysis.real_rates is defined %}
+                  <div class="card bg-dark mb-3">
+                    <div class="card-header">
+                      <h5 class="mb-0">Real Rates Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                      <p><strong>Impact on Gold:</strong> 
+                        <span class="
+                          {% if 'Bullish' in data.interest_rates.detailed_gold_analysis.real_rates.status %}text-success
+                          {% elif 'Bearish' in data.interest_rates.detailed_gold_analysis.real_rates.status %}text-danger
+                          {% else %}text-light{% endif %}">
+                          {{ data.interest_rates.detailed_gold_analysis.real_rates.status }}
+                        </span>
+                      </p>
+                      <small class="text-light">{{ data.interest_rates.detailed_gold_analysis.real_rates.explanation }}</small>
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <!-- Combined Analysis -->
+              {% if data.interest_rates.detailed_gold_analysis.combined_outlook is defined %}
+              <div class="row mt-3">
+                <div class="col-12">
+                  <div class="card bg-dark mb-3">
+                    <div class="card-header">
+                      <h5 class="mb-0">Combined Interest Rate Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                      <p><strong>{{ data.interest_rates.detailed_gold_analysis.combined_outlook.summary }}</strong></p>
+                      <p class="mb-0">{{ data.interest_rates.detailed_gold_analysis.combined_outlook.explanation }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              
+              <!-- Gold Impact Summary -->
+              <div class="alert {% if 'Bullish' in data.interest_rates.gold_impact %}alert-success{% elif 'Bearish' in data.interest_rates.gold_impact %}alert-danger{% else %}alert-secondary{% endif %} mt-3">
+                <strong>Gold Impact Summary:</strong> {{ data.interest_rates.gold_impact }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Technical Indicators & Market Correlations -->
+      {% if data.technical_indicators is defined or data.key_correlations is defined or data.premarket_data is defined %}
+      <div class="row mb-4">
+        {% if data.technical_indicators is defined %}
+        <div class="col-md-6 mb-3">
+          <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+              <h4>Gold Technical Indicators
+                <span class="badge {% if data.technical_indicators.condition == 'Bullish' %}bg-success{% elif data.technical_indicators.condition == 'Bearish' %}bg-danger{% else %}bg-secondary{% endif %}">
+                  {{ data.technical_indicators.condition }}
+                </span>
+              </h4>
+            </div>
+            <div class="card-body">
+              <!-- Technical Summary -->
+              <div class="mb-3">
+                <h5>Technical Analysis Summary</h5>
+                <p>{{ data.technical_indicators.analysis_summary }}</p>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Technical Score:</span>
+                  <span class="fw-bold 
+                    {% if data.technical_indicators.technical_score > 3 %}text-success
+                    {% elif data.technical_indicators.technical_score < 0 %}text-danger
+                    {% else %}text-warning{% endif %}">
+                    {{ data.technical_indicators.technical_score }} 
+                    ({% if data.technical_indicators.technical_score > 5 %}Strongly Bullish
+                    {% elif data.technical_indicators.technical_score > 2 %}Bullish
+                    {% elif data.technical_indicators.technical_score >= 0 %}Neutral
+                    {% elif data.technical_indicators.technical_score >= -3 %}Bearish
+                    {% else %}Strongly Bearish{% endif %})
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Moving Averages Section -->
+              <h5>Moving Averages</h5>
+              <div class="table-responsive mb-3">
+                <table class="table table-dark table-sm">
+                  <tbody>
+                    <tr>
+                      <td>Current Price</td>
+                      <td>${{ data.technical_indicators.price }}</td>
+                    </tr>
+                    {% if data.technical_indicators.ma200 is not none %}
+                    <tr>
+                      <td>200-Day MA</td>
+                      <td>${{ data.technical_indicators.ma200 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                      <td>50-Day MA</td>
+                      <td>${{ data.technical_indicators.ma50 }}</td>
+                    </tr>
+                    <tr>
+                      <td>20-Day MA</td>
+                      <td>${{ data.technical_indicators.ma20 }}</td>
+                    </tr>
+                    <tr>
+                      <td>10-Day MA</td>
+                      <td>${{ data.technical_indicators.ma10 }}</td>
+                    </tr>
+                    <tr>
+                      <td>Moving Averages Signal</td>
+                      <td class="
+                        {% if data.technical_indicators.signals.moving_averages == 'Bullish' %}text-success
+                        {% elif data.technical_indicators.signals.moving_averages == 'Bearish' %}text-danger
+                        {% else %}text-warning{% endif %}">
+                        {{ data.technical_indicators.signals.moving_averages }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Momentum & Oscillators -->
+              <h5>Momentum & Oscillators</h5>
+              <div class="table-responsive mb-3">
+                <table class="table table-dark table-sm">
+                  <tbody>
+                    <tr>
+                      <td>RSI (14)</td>
+                      <td class="
+                        {% if data.technical_indicators.rsi < 30 %}text-success
+                        {% elif data.technical_indicators.rsi > 70 %}text-danger
+                        {% else %}text-light{% endif %}">
+                        {{ data.technical_indicators.rsi }}
+                        {% if data.technical_indicators.rsi < 30 %} (Oversold)
+                        {% elif data.technical_indicators.rsi > 70 %} (Overbought)
+                        {% endif %}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>MACD Line</td>
+                      <td class="{% if data.technical_indicators.macd.line > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.macd.line }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>MACD Signal Line</td>
+                      <td>{{ data.technical_indicators.macd.signal }}</td>
+                    </tr>
+                    <tr>
+                      <td>MACD Histogram</td>
+                      <td class="{% if data.technical_indicators.macd.histogram > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.macd.histogram }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>MACD Direction</td>
+                      <td class="{% if data.technical_indicators.macd.bullish %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.signals.macd }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Price Momentum -->
+              <h5>Price Momentum</h5>
+              <div class="table-responsive">
+                <table class="table table-dark table-sm">
+                  <tbody>
+                    {% if data.technical_indicators.momentum.day5 is not none %}
+                    <tr>
+                      <td>5-Day Change</td>
+                      <td class="{% if data.technical_indicators.momentum.day5 > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.momentum.day5 }}%
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.technical_indicators.momentum.day10 is not none %}
+                    <tr>
+                      <td>10-Day Change</td>
+                      <td class="{% if data.technical_indicators.momentum.day10 > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.momentum.day10 }}%
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.technical_indicators.momentum.day20 is not none %}
+                    <tr>
+                      <td>20-Day Change</td>
+                      <td class="{% if data.technical_indicators.momentum.day20 > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.technical_indicators.momentum.day20 }}%
+                      </td>
+                    </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
+        {% if data.key_correlations is defined or data.premarket_data is defined %}
+        <div class="col-md-6 mb-3">
+          <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+              <h4>Market Correlations & Premarket Data</h4>
+            </div>
+            <div class="card-body">
+              {% if data.enhanced_premarket is defined %}
+              <h5>Current Market Prices</h5>
+              <div class="table-responsive mb-3">
+                <table class="table table-dark table-sm">
+                  <thead>
+                    <tr>
+                      <th>Market</th>
+                      <th>Last Price</th>
+                      <th>Daily Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if data.enhanced_premarket.gold is defined %}
+                    <tr>
+                      <td>Gold Futures</td>
+                      <td>${{ data.enhanced_premarket.gold.price|round(2) }}</td>
+                      <td class="{% if data.enhanced_premarket.gold.direction == 'up' %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.enhanced_premarket.gold.change|round(2) }} ({{ data.enhanced_premarket.gold.change_pct|round(2) }}%)
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.enhanced_premarket.sp500_futures is defined %}
+                    <tr>
+                      <td>S&P 500 Futures</td>
+                      <td>{{ data.enhanced_premarket.sp500_futures.price|round(2) }}</td>
+                      <td class="{% if data.enhanced_premarket.sp500_futures.direction == 'up' %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.enhanced_premarket.sp500_futures.change|round(2) }} ({{ data.enhanced_premarket.sp500_futures.change_pct|round(2) }}%)
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.enhanced_premarket.vix is defined %}
+                    <tr>
+                      <td>VIX</td>
+                      <td>{{ data.enhanced_premarket.vix.price|round(2) }}</td>
+                      <td class="{% if data.enhanced_premarket.vix.direction == 'down' %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.enhanced_premarket.vix.change|round(2) }} ({{ data.enhanced_premarket.vix.change_pct|round(2) }}%)
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.enhanced_premarket.dollar_index is defined %}
+                    <tr>
+                      <td>USD Index</td>
+                      <td>{{ data.enhanced_premarket.dollar_index.price|round(2) }}</td>
+                      <td class="{% if data.enhanced_premarket.dollar_index.direction == 'down' %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.enhanced_premarket.dollar_index.change|round(2) }} ({{ data.enhanced_premarket.dollar_index.change_pct|round(2) }}%)
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.enhanced_premarket.treasury_10y is defined %}
+                    <tr>
+                      <td>10Y Treasury Yield</td>
+                      <td>{% if data.enhanced_premarket.treasury_10y.price != 'N/A' %}{{ data.enhanced_premarket.treasury_10y.price|round(2) }}%{% else %}N/A{% endif %}</td>
+                      <td class="{% if data.enhanced_premarket.treasury_10y.direction == 'down' %}text-success{% elif data.enhanced_premarket.treasury_10y.direction == 'up' %}text-danger{% endif %}">
+                        {% if data.enhanced_premarket.treasury_10y.change != 0 %}
+                        {{ data.enhanced_premarket.treasury_10y.change|round(2) }} ({{ data.enhanced_premarket.treasury_10y.change_pct|round(2) }}%)
+                        {% else %}
+                        --
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+              {% elif data.premarket_data is defined %}
+              <h5>Current Market Prices</h5>
+              <div class="table-responsive mb-3">
+                <table class="table table-dark table-sm">
+                  <tbody>
+                    {% if data.premarket_data.gold is defined and data.premarket_data.gold != "N/A" %}
+                    <tr>
+                      <td>Gold Futures</td>
+                      <td>${{ data.premarket_data.gold }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.premarket_data.sp500_futures is defined and data.premarket_data.sp500_futures != "N/A" %}
+                    <tr>
+                      <td>S&P 500 Futures</td>
+                      <td>{{ data.premarket_data.sp500_futures }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.premarket_data.vix is defined and data.premarket_data.vix != "N/A" %}
+                    <tr>
+                      <td>VIX</td>
+                      <td>{{ data.premarket_data.vix }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.premarket_data.dollar_index is defined and data.premarket_data.dollar_index != "N/A" %}
+                    <tr>
+                      <td>USD Index</td>
+                      <td>{{ data.premarket_data.dollar_index }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.premarket_data.treasury_10y is defined and data.premarket_data.treasury_10y != "N/A" %}
+                    <tr>
+                      <td>10Y Treasury Yield</td>
+                      <td>{{ data.premarket_data.treasury_10y }}%</td>
+                    </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+              
+              {% if data.key_correlations is defined %}
+              <h5>Gold Correlations (30 Days)</h5>
+              <div class="table-responsive">
+                <table class="table table-dark table-sm">
+                  <tbody>
+                    {% if data.key_correlations.gold_dollar is defined and data.key_correlations.gold_dollar != "N/A" %}
+                    <tr>
+                      <td>USD Correlation</td>
+                      <td class="{% if data.key_correlations.gold_dollar < 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ data.key_correlations.gold_dollar }}
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% if data.key_correlations.gold_10y_yield is defined and data.key_correlations.gold_10y_yield != "N/A" %}
+                    <tr>
+                      <td>10Y Yield Correlation</td>
+                      <td>{{ data.key_correlations.gold_10y_yield }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.key_correlations.gold_vix is defined and data.key_correlations.gold_vix != "N/A" %}
+                    <tr>
+                      <td>VIX Correlation</td>
+                      <td>{{ data.key_correlations.gold_vix }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if data.key_correlations.gold_sp500 is defined and data.key_correlations.gold_sp500 != "N/A" %}
+                    <tr>
+                      <td>S&P 500 Correlation</td>
+                      <td>{{ data.key_correlations.gold_sp500 }}</td>
+                    </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
+      <!-- Comprehensive Market Outlook -->
+      {% if data.market_outlook is defined %}
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Comprehensive Gold Market Outlook</h4>
+            </div>
+            <div class="card-body">
+              <div class="alert alert-info">
+                <h5>{{ data.market_outlook.summary }}</h5>
+                <hr>
+                <ul class="mb-0">
+                  {% for point in data.market_outlook.points %}
+                  <li>{{ point }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              
+              {% if data.market_outlook.directive is defined %}
+              <div class="alert {% if 'Bullish' in data.market_outlook.directive %}alert-success{% elif 'Bearish' in data.market_outlook.directive %}alert-danger{% else %}alert-secondary{% endif %} text-center">
+                <h5 class="mb-0">Final Assessment: <strong>{{ data.market_outlook.directive }}</strong></h5>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Educational Content -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card bg-dark border-secondary">
+            <div class="card-header">
+              <h4>Understanding Gold Futures & Key Gold Price Drivers</h4>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h5>Futures Curve Dynamics</h5>
+                  <ul>
+                    <li><strong>Contango:</strong> When futures prices are higher than spot prices, increasing with time to expiration. This is the normal state for gold markets and reflects storage costs and interest rates.</li>
+                    <li><strong>Backwardation:</strong> When futures prices are lower than spot prices, indicating strong immediate demand or supply shortages.</li>
+                    <li><strong>Steep Contango:</strong> May indicate weak immediate demand but speculative interest</li>
+                    <li><strong>Flat Curve:</strong> May indicate equilibrium between spot and futures markets</li>
+                  </ul>
+                </div>
+                <div class="col-md-6">
+                  <h5>Key Drivers of Gold Prices</h5>
+                  <ul>
+                    <li><strong>Real Interest Rates:</strong> Negative real rates typically support gold prices as the opportunity cost of holding non-yielding assets decreases</li>
+                    <li><strong>US Dollar Strength:</strong> Gold typically has a negative correlation with the USD</li>
+                    <li><strong>Yield Curve:</strong> Inverted yield curves may signal economic uncertainty, often supportive for gold</li>
+                    <li><strong>Market Sentiment:</strong> Gold often serves as a safe haven during periods of high market volatility (VIX)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

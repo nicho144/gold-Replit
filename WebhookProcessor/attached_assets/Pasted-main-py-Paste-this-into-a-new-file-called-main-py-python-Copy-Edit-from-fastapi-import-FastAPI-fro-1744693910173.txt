@@ -1,0 +1,101 @@
+main.py
+Paste this into a new file called main.py:
+
+python
+Copy
+Edit
+from fastapi import FastAPI
+from pydantic import BaseModel
+import yfinance as yf
+
+app = FastAPI()
+
+class MarketInput(BaseModel):
+    ticker_front: str  # e.g., "GC=F" for Gold Front Month
+    ticker_next: str   # e.g., "GCM24.CMX" for next month
+    physical_demand: str  # "declining", "stable", "rising"
+    price_breakout: bool  # Has price broken resistance?
+
+@app.post("/analyze")
+def analyze_market(input: MarketInput):
+    front = yf.Ticker(input.ticker_front).info
+    next_ = yf.Ticker(input.ticker_next).info
+
+    front_price = front.get("regularMarketPrice", 0)
+    next_price = next_.get("regularMarketPrice", 0)
+
+    contango_slope = "steep_upward" if next_price - front_price > 5 else "mild"
+
+    # For now, we mock open interest as "spike"
+    open_interest_change = "spike"
+
+    signal = "NEUTRAL"
+    reasons = []
+    recommendations = []
+
+    if contango_slope == "steep_upward" and \
+       open_interest_change == "spike" and \
+       not input.price_breakout and \
+       input.physical_demand == "declining":
+        signal = "BEARISH — Potential exhaustion"
+        reasons = [
+            f"Contango widened: {next_price:.2f} > {front_price:.2f}",
+            "Open interest spike (mocked)",
+            "Price stalling",
+            "Physical demand declining"
+        ]
+        recommendations = [
+            "Reduce long exposure in GLD or futures",
+            "Consider bear spreads or cash",
+            "Watch roll yield drag on GLD/ETFs"
+        ]
+    else:
+        signal = "NEUTRAL or BULLISH — No exhaustion confirmed"
+        recommendations = ["Continue monitoring term structure and demand."]
+
+    return {
+        "signal": signal,
+        "reasons": reasons,
+        "recommendations": recommendations,
+        "prices": {
+            "front_contract": front_price,
+            "next_contract": next_price
+        }
+    }
+✅ Step 2: requirements.txt
+Create a file called requirements.txt and paste this:
+
+nginx
+Copy
+Edit
+fastapi
+uvicorn
+yfinance
+pydantic
+✅ Step 3: Run the Server
+In the Replit Shell, run this:
+
+bash
+Copy
+Edit
+uvicorn main:app --host=0.0.0.0 --port=8000
+✅ Step 4: Test It
+Use a REST client like Postman, or Hoppscotch, and send this:
+
+URL:
+
+php-template
+Copy
+Edit
+POST https://<your-replit-username>.<your-replit-project-name>.repl.co/analyze
+JSON body:
+
+json
+Copy
+Edit
+{
+  "ticker_front": "GC=F",
+  "ticker_next": "GCM24.CMX",
+  "physical_demand": "declining",
+  "price_breakout": false
+}

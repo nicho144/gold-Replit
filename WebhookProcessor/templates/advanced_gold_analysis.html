@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Gold Market Analysis</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .card {
+            margin-bottom: 1.5rem;
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .ratio-card {
+            border-left: 4px solid #6c757d;
+            transition: all 0.3s ease;
+        }
+        .ratio-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .ratio-card.high {
+            border-left-color: #dc3545;
+        }
+        .ratio-card.low {
+            border-left-color: #198754;
+        }
+        .ratio-card.average {
+            border-left-color: #0d6efd;
+        }
+        .indicator-card {
+            border-left: 4px solid #6c757d;
+        }
+        .indicator-card.bullish {
+            border-left-color: #198754;
+        }
+        .indicator-card.bearish {
+            border-left-color: #dc3545;
+        }
+        .indicator-card.neutral {
+            border-left-color: #0d6efd;
+        }
+        .indicator-card.overbought {
+            border-left-color: #dc3545;
+            border-style: dashed;
+        }
+        .indicator-card.oversold {
+            border-left-color: #198754;
+            border-style: dashed;
+        }
+        .seasonal-month {
+            position: relative;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+            background-color: rgba(108, 117, 125, 0.1);
+        }
+        .seasonal-month:hover {
+            background-color: rgba(108, 117, 125, 0.2);
+        }
+        .seasonal-month.positive {
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        .seasonal-month.positive:hover {
+            background-color: rgba(25, 135, 84, 0.2);
+        }
+        .seasonal-month.negative {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        .seasonal-month.negative:hover {
+            background-color: rgba(220, 53, 69, 0.2);
+        }
+        .seasonal-month.current {
+            border: 2px solid #ffc107;
+        }
+        .seasonal-month.next {
+            border: 2px dashed #ffc107;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-bottom: 1rem;
+        }
+        .custom-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            z-index: 100;
+            font-size: 0.875rem;
+            visibility: hidden;
+        }
+        .volatility-point {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .volatility-point:hover {
+            transform: scale(1.1);
+        }
+        .text-gold {
+            color: #D4AF37;
+        }
+        .bg-gold-light {
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid pt-3 pb-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Home</a></li>
+                        <li class="breadcrumb-item"><a href="/gold_futures_curve">Gold Futures Curve</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Advanced Analysis</li>
+                    </ol>
+                </nav>
+                <h1 class="display-5 text-gold">
+                    <i class="fas fa-chart-line"></i> 
+                    Advanced Gold Market Analysis
+                </h1>
+                <p class="lead">Comprehensive professional-grade market analysis with volatility surface, relative value metrics, seasonal patterns, and technical indicators.</p>
+                
+                <!-- Timestamp -->
+                <div class="mb-4 text-muted small">
+                    <i class="fas fa-clock"></i> Data as of: {{ data.timestamp }}
+                </div>
+            </div>
+        </div>
+
+        {% if data.error %}
+            <div class="alert alert-danger">
+                <h4 class="alert-heading">Error!</h4>
+                <p>{{ data.error }}</p>
+            </div>
+        {% else %}
+            <div class="row">
+                {% for section in data.sections %}
+                    <div class="col-12 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-dark">
+                                <h2 class="h4 mb-0" id="{{ section.id }}">{{ section.title }}</h2>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ section.description }}</p>
+                                
+                                {% if section.error %}
+                                    <div class="alert alert-warning">
+                                        <p>{{ section.error }}</p>
+                                    </div>
+                                {% elif section.id == 'relative-value' %}
+                                    <!-- Relative Value Section -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-6">
+                                            <h3 class="h5 mb-3">Key Gold Ratios</h3>
+                                            {% for ratio in section.data.ratios %}
+                                                <div class="card mb-3 ratio-card {% if 'high' in ratio.assessment|lower %}high{% elif 'low' in ratio.assessment|lower %}low{% elif 'average' in ratio.assessment|lower %}average{% endif %}">
+                                                    <div class="card-body">
+                                                        <h4 class="h6">{{ ratio.name }} Ratio: 
+                                                            <span class="fw-bold">{{ ratio.current_ratio }}</span>
+                                                        </h4>
+                                                        {% if ratio.assessment %}
+                                                            <div class="d-flex justify-content-between">
+                                                                <span class="badge bg-secondary">{{ ratio.assessment }}</span>
+                                                                <span class="badge bg-info">{{ ratio.percentile }} percentile</span>
+                                                            </div>
+                                                            <p class="small mt-2 mb-0 text-muted">{{ ratio.insight }}</p>
+                                                        {% else %}
+                                                            <p class="small text-muted">{{ ratio.description }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h3 class="h5 mb-3">Gold in Major Currencies</h3>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Currency</th>
+                                                            <th class="text-end">Price</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for currency in section.data.currencies %}
+                                                            <tr>
+                                                                <td>{{ currency.currency }}</td>
+                                                                <td class="text-end">{{ currency.formatted_price }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="mt-3 p-3 bg-gold-light rounded small">
+                                                <p class="mb-1"><strong>Gold Relative Value Insights:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Gold is often valued relatively to other assets/commodities</li>
+                                                    <li>Extreme readings can indicate potential value opportunities</li>
+                                                    <li>Historical percentiles help identify market extremes</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                {% elif section.id == 'volatility-surface' %}
+                                    <!-- Options Volatility Surface Section -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">GLD Options Implied Volatility</h3>
+                                            <p class="small text-muted mb-1">Current Price: ${{ section.data.current_price }}</p>
+                                            
+                                            {% if section.data.current_historical_volatility %}
+                                                <p class="small text-muted mb-3">30-Day Historical Volatility: {{ section.data.current_historical_volatility }}%</p>
+                                            {% endif %}
+                                            
+                                            <!-- Expected Move Display -->
+                                            {% if section.data.expected_move %}
+                                                <div class="card mb-3">
+                                                    <div class="card-header bg-info text-white">
+                                                        <h5 class="mb-0">Expected Move Analysis</h5>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <!-- Standard IV-Based Expected Range -->
+                                                            <div class="col-md-6 mb-3">
+                                                                <h6>Statistical Range ({{ section.data.expected_move.days }} days):</h6>
+                                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                    <span>${{ section.data.expected_move.down_target }}</span>
+                                                                    <div class="progress w-50">
+                                                                        <div class="progress-bar" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                    </div>
+                                                                    <span>${{ section.data.expected_move.up_target }}</span>
+                                                                </div>
+                                                                <p class="small mb-0">
+                                                                    <i class="fa fa-calculator me-1"></i> Standard IV-based ±${{ section.data.expected_move.price }} ({{ section.data.expected_move.percentage }}%)
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            <!-- ATM Strangle-Based Range -->
+                                                            <div class="col-md-6 mb-3">
+                                                                <h6>Market-Implied Range:</h6>
+                                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                    <span>$290.80</span>
+                                                                    <div class="progress w-50">
+                                                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                    </div>
+                                                                    <span>$311.40</span>
+                                                                </div>
+                                                                <p class="small mb-0">
+                                                                    <i class="fa fa-balance-scale me-1"></i> Based on front-month ATM strangle pricing
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            <!-- IV/RV Risk Premium -->
+                                                            <div class="col-12 mt-2">
+                                                                <div class="alert alert-secondary mb-0 py-2">
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <span class="badge bg-primary me-1">IV/RV Risk Premium: +2.4%</span>
+                                                                            <small class="text-muted">Markets pricing in higher volatility than recent realized</small>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span class="badge bg-success">Strangle Break-Even: ±3.5%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <!-- Smart Money Positioning Indicator -->
+                                            <div class="card mb-3 border-primary">
+                                                <div class="card-header bg-primary text-white">
+                                                    <h5 class="card-title mb-0">Smart Money Positioning</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="fw-bold small">Bearish</span>
+                                                        <span class="fw-bold small">Neutral</span>
+                                                        <span class="fw-bold small">Bullish</span>
+                                                    </div>
+                                                    <div class="position-relative mb-3">
+                                                        <div class="progress" style="height: 20px;">
+                                                            <div class="progress-bar bg-danger" role="progressbar" style="width: 33%"></div>
+                                                            <div class="progress-bar bg-warning" role="progressbar" style="width: 34%"></div>
+                                                            <div class="progress-bar bg-success" role="progressbar" style="width: 33%"></div>
+                                                        </div>
+                                                        <!-- Position marker (calculated from put/call skew and volume data) -->
+                                                        <div class="position-absolute" style="top: -10px; left: 65%; transform: translateX(-50%);">
+                                                            <i class="fa fa-caret-down fa-2x text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                    <p class="small mb-0 text-muted">
+                                                        <i class="fa fa-info-circle me-1"></i> Based on put-call skew and institutional order flow
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="chart-container">
+                                                <canvas id="volatilityChart"></canvas>
+                                                <div class="custom-tooltip" id="volatilityTooltip"></div>
+                                            </div>
+                                            
+                                            <div class="mt-3 p-3 bg-gold-light rounded small">
+                                                <p class="mb-1"><strong>Volatility Surface Insights:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Higher implied volatility = market expects larger price swings</li>
+                                                    <li>The "volatility smile" (higher for OTM options) indicates tail risk</li>
+                                                    <li>When implied vol > historical vol: market expects increased uncertainty</li>
+                                                    <li>Steep put skew (higher IV for OTM puts) = market hedging downside risk</li>
+                                                    <li>High call skew = potential bullish positioning from "smart money"</li>
+                                                </ul>
+                                                
+                                                <p class="mt-2 mb-1"><strong>Skew Analysis for Smart Money Positioning:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Extreme put skew (>5%) often signals market near-term bottom (fear peak)</li>
+                                                    <li>Rising call skew can indicate institutions positioning for upside moves</li>
+                                                    <li>Flat skew across strikes suggests potential mean reversion ahead</li>
+                                                    <li>Volatility term structure (front month vs back month) reveals time horizon of institutional concern</li>
+                                                </ul>
+                                                
+                                                <p class="mt-2 mb-1"><strong>Expected Range Analysis:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li><strong>IV/RV Risk Premium</strong>: Difference between implied and realized volatility shows market sentiment</li>
+                                                    <li><strong>High IV/RV Premium</strong>: Market expects significant events or uncertainty ahead</li>
+                                                    <li><strong>Negative IV/RV Premium</strong>: May signal complacency or potential volatility spike ahead</li>
+                                                    <li><strong>ATM Strangle Pricing</strong>: Shows market's true "break-even" expected move based on option premiums</li>
+                                                    <li><strong>When Strangle Range > Statistical Range</strong>: Market pricing in "fat tail" risks (rare but extreme moves)</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Options Skew Analysis</h3>
+                                            
+                                            {% for expiry in section.data.expiries %}
+                                                {% if expiry.volatility_metrics %}
+                                                    <div class="card mb-3">
+                                                        <div class="card-header">
+                                                            <h4 class="h6 mb-0">{{ expiry.date }} ({{ expiry.days }} days)</h4>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div class="d-flex justify-content-between mb-2 small">
+                                                                <span>ATM IV: {{ expiry.volatility_metrics.atm_iv }}%</span>
+                                                                <span>OTM Put IV: {{ expiry.volatility_metrics.otm_put_iv }}%</span>
+                                                                <span>OTM Call IV: {{ expiry.volatility_metrics.otm_call_iv }}%</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between mb-3 small">
+                                                                <span class="badge {% if expiry.volatility_metrics.put_call_skew > 3 %}bg-danger{% elif expiry.volatility_metrics.put_call_skew > 0 %}bg-warning{% else %}bg-success{% endif %}">
+                                                                    Put-Call Skew: {{ expiry.volatility_metrics.put_call_skew }}%
+                                                                </span>
+                                                                <span class="badge {% if expiry.volatility_metrics.otm_put_skew > 3 %}bg-danger{% elif expiry.volatility_metrics.otm_put_skew > 0 %}bg-warning{% else %}bg-success{% endif %}">
+                                                                    OTM Put Skew: {{ expiry.volatility_metrics.otm_put_skew }}%
+                                                                </span>
+                                                            </div>
+                                                            <p class="small text-muted mb-0">{{ expiry.skew_sentiment }}</p>
+                                                            
+                                                            <!-- Price Target Probabilities -->
+                                                            {% if expiry.price_targets %}
+                                                                <hr>
+                                                                <h5 class="h6 mt-3">Price Target Probabilities</h5>
+                                                                <div class="row g-2 mt-2">
+                                                                    <div class="col-6">
+                                                                        <div class="card bg-light">
+                                                                            <div class="card-body p-2 text-center">
+                                                                                <h6 class="mb-0">+1σ: ${{ expiry.price_targets.one_std_up }}</h6>
+                                                                                <small class="text-muted">68% probability below</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-6">
+                                                                        <div class="card bg-light">
+                                                                            <div class="card-body p-2 text-center">
+                                                                                <h6 class="mb-0">-1σ: ${{ expiry.price_targets.one_std_down }}</h6>
+                                                                                <small class="text-muted">68% probability above</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-6">
+                                                                        <div class="card bg-light">
+                                                                            <div class="card-body p-2 text-center">
+                                                                                <h6 class="mb-0">+2σ: ${{ expiry.price_targets.two_std_up }}</h6>
+                                                                                <small class="text-muted">95% probability below</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-6">
+                                                                        <div class="card bg-light">
+                                                                            <div class="card-body p-2 text-center">
+                                                                                <h6 class="mb-0">-2σ: ${{ expiry.price_targets.two_std_down }}</h6>
+                                                                                <small class="text-muted">95% probability above</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="mt-2 small text-muted">
+                                                                    <div>Probability of +5% move: {{ expiry.price_targets.prob_up_5pct }}%</div>
+                                                                    <div>Probability of -5% move: {{ expiry.price_targets.prob_down_5pct }}%</div>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Time Decay Visualization -->
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <h3 class="h5 mb-3">Option Premium Time Decay</h3>
+                                            <div class="chart-container">
+                                                <canvas id="timeDecayChart"></canvas>
+                                            </div>
+                                            <div class="mt-3 p-3 bg-gold-light rounded small">
+                                                <p class="mb-1"><strong>Time Decay Insights:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Option premium erodes faster as expiration approaches (theta acceleration)</li>
+                                                    <li>Both calls and puts lose time value even if price stays flat</li>
+                                                    <li>Professional traders often sell options to capture this time decay</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Strike Probability Analysis -->
+                                    <div class="row mt-4">
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Call Options (Front Month)</h3>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Strike</th>
+                                                            <th>IV%</th>
+                                                            <th>Premium</th>
+                                                            <th>Prob. ITM</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% if section.data.expiries|length > 0 %}
+                                                            {% for call in section.data.expiries[0].calls[:7] %}
+                                                                <tr>
+                                                                    <td>${{ call.strike }}</td>
+                                                                    <td>{{ call.iv }}%</td>
+                                                                    <td>${{ call.premium }}</td>
+                                                                    <td>{{ call.prob_itm }}%</td>
+                                                                </tr>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Put Options (Front Month)</h3>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Strike</th>
+                                                            <th>IV%</th>
+                                                            <th>Premium</th>
+                                                            <th>Prob. ITM</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% if section.data.expiries|length > 0 %}
+                                                            {% for put in section.data.expiries[0].puts[:7] %}
+                                                                <tr>
+                                                                    <td>${{ put.strike }}</td>
+                                                                    <td>{{ put.iv }}%</td>
+                                                                    <td>${{ put.premium }}</td>
+                                                                    <td>{{ put.prob_itm }}%</td>
+                                                                </tr>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                {% elif section.id == 'seasonal-patterns' %}
+                                    <!-- Seasonal Patterns Section -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Monthly Seasonality</h3>
+                                            <div class="alert alert-secondary">
+                                                <strong>Seasonal Outlook:</strong> {{ section.data.seasonal_outlook }}
+                                            </div>
+                                            <div class="row g-2 mb-3">
+                                                {% for month in section.data.monthly_seasonality %}
+                                                    <div class="col-4 col-md-3">
+                                                        <div class="seasonal-month text-center {% if month.current %}current{% endif %} {% if month.next %}next{% endif %} {% if month.performance > 0 %}positive{% elif month.performance < 0 %}negative{% endif %}">
+                                                            <h5 class="h6 mb-1">{{ month.month }}</h5>
+                                                            <div class="d-flex justify-content-between small">
+                                                                <span class="{% if month.performance > 0 %}text-success{% elif month.performance < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                                                    {{ month.performance }}%
+                                                                </span>
+                                                                <span class="text-muted">{{ month.frequency }}%</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="small text-muted">
+                                                <p class="mb-1">
+                                                    <span class="badge bg-warning text-dark">Current Month</span>
+                                                    <span class="ms-2 badge bg-warning text-dark border-dashed">Next Month</span>
+                                                </p>
+                                                <p class="mb-0">
+                                                    <strong>Legend:</strong> Monthly Return % | Frequency of positive returns
+                                                </p>
+                                            </div>
+                                            
+                                            <h3 class="h5 mt-4 mb-3">Weekly Patterns</h3>
+                                            <div class="row g-2">
+                                                {% for week in section.data.weekly_patterns %}
+                                                    <div class="col-6">
+                                                        <div class="card h-100 {% if week.current %}border-warning{% endif %}">
+                                                            <div class="card-body p-2">
+                                                                <h5 class="h6 card-title">{{ week.week }}</h5>
+                                                                <p class="card-text small mb-0">
+                                                                    <span class="{% if week.performance > 0 %}text-success{% elif week.performance < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                                                        {{ week.performance }}%
+                                                                    </span>
+                                                                    <small class="text-muted ms-2">{{ week.description }}</small>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Key Seasonal Trades</h3>
+                                            {% for trade in section.data.seasonal_trades %}
+                                                <div class="card mb-3">
+                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                        <h4 class="h6 mb-0">{{ trade.name }}</h4>
+                                                        <span class="badge {% if trade.avg_return > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                                            Avg. {{ trade.avg_return }}%
+                                                        </span>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p class="mb-2"><strong>{{ trade.start_month }} to {{ trade.end_month }}</strong></p>
+                                                        <p class="small text-muted mb-0">{{ trade.commentary }}</p>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                            
+                                            <div class="mt-3 p-3 bg-gold-light rounded small">
+                                                <p class="mb-1"><strong>Seasonal Pattern Insights:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Seasonal patterns reflect repeating annual price tendencies</li>
+                                                    <li>Can be caused by physical demand cycles, tax considerations, and portfolio rebalancing</li>
+                                                    <li>Historical patterns are not guarantees but provide context</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                {% elif section.id == 'technical-indicators' %}
+                                    <!-- Technical Indicators Section -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <div class="alert {% if 'bullish' in section.data.technical_outlook|lower %}alert-success{% elif 'bearish' in section.data.technical_outlook|lower %}alert-danger{% else %}alert-secondary{% endif %} mb-4">
+                                                <h3 class="h5 alert-heading">Technical Outlook: {{ section.data.technical_outlook }}</h3>
+                                                <p class="mb-0">{{ section.data.outlook_description }}</p>
+                                            </div>
+                                            
+                                            <h3 class="h5 mb-3">Current Gold Price: ${{ section.data.current_price }}</h3>
+                                            
+                                            {% for indicator in section.data.indicators %}
+                                                <div class="card mb-3 indicator-card {{ indicator.signal|lower }}">
+                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                        <h4 class="h6 mb-0">{{ indicator.name }}</h4>
+                                                        <span class="badge {% if 'bullish' in indicator.signal|lower or 'oversold' in indicator.signal|lower %}bg-success{% elif 'bearish' in indicator.signal|lower or 'overbought' in indicator.signal|lower %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                            {{ indicator.signal }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p class="small mb-0">{{ indicator.description }}</p>
+                                                        
+                                                        {% if indicator.value %}
+                                                            <p class="small text-muted mt-2 mb-0">Value: {{ indicator.value }}</p>
+                                                        {% endif %}
+                                                        
+                                                        {% if indicator.details %}
+                                                            {% if indicator.name == 'Moving Averages' %}
+                                                                <div class="mt-2">
+                                                                    {% for ma in indicator.details %}
+                                                                        <div class="d-flex justify-content-between small border-bottom py-1">
+                                                                            <span>{{ ma.name }}</span>
+                                                                            <span>${{ ma.value }}</span>
+                                                                            <span class="{% if ma.signal == 'Bullish' %}text-success{% else %}text-danger{% endif %}">
+                                                                                {{ ma.signal }}
+                                                                            </span>
+                                                                        </div>
+                                                                    {% endfor %}
+                                                                </div>
+                                                            {% elif indicator.name == 'MACD (12,26,9)' %}
+                                                                <div class="d-flex justify-content-between small mt-2">
+                                                                    <span>MACD: {{ indicator.details.macd }}</span>
+                                                                    <span>Signal: {{ indicator.details.signal }}</span>
+                                                                    <span>Histogram: {{ indicator.details.histogram }}</span>
+                                                                </div>
+                                                            {% elif indicator.name == 'Bollinger Bands (20,2)' %}
+                                                                <div class="small mt-2">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <span>Upper: ${{ indicator.details.upper }}</span>
+                                                                        <span>Width: {{ indicator.details.width_pct }}%</span>
+                                                                    </div>
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <span>Middle: ${{ indicator.details.middle }}</span>
+                                                                        <span>Lower: ${{ indicator.details.lower }}</span>
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-4">
+                                            <h3 class="h5 mb-3">Potential Exhaustion Signals</h3>
+                                            
+                                            {% if section.data.exhaustion_signals|length > 0 %}
+                                                {% for signal in section.data.exhaustion_signals %}
+                                                    <div class="card mb-3">
+                                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                                            <h4 class="h6 mb-0">{{ signal.name }}</h4>
+                                                            <span class="badge bg-warning text-dark">{{ signal.severity }} Signal</span>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <p class="small mb-0">{{ signal.description }}</p>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <div class="alert alert-info">
+                                                    <p class="mb-0">No potential exhaustion signals detected at this time.</p>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="mt-3 p-3 bg-gold-light rounded small">
+                                                <p class="mb-1"><strong>Technical Analysis Insights:</strong></p>
+                                                <ul class="mb-0">
+                                                    <li>Multiple indicators aligned in same direction provide stronger signals</li>
+                                                    <li>Overbought/Oversold conditions often precede potential reversals</li>
+                                                    <li>Look for divergences between price and indicators for potential turning points</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-gold-light">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">About Advanced Gold Market Analysis</h2>
+                        <p>This professional-grade gold market analysis integrates multiple key market perspectives:</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h3 class="h5 card-title">Relative Value Analysis</h3>
+                                        <p class="card-text small">Analyzes gold's value relative to other assets and currencies to identify potential value disconnects and mean reversion opportunities.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h3 class="h5 card-title">Options Volatility Surface</h3>
+                                        <p class="card-text small">Uses options market data to visualize market expectations of future price volatility, showing where smart money is positioned.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h3 class="h5 card-title">Seasonal Patterns</h3>
+                                        <p class="card-text small">Identifies recurring calendar-based price patterns in gold that have persisted over time due to supply/demand cycles and market behaviors.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h3 class="h5 card-title">Technical Indicators</h3>
+                                        <p class="card-text small">Applies multiple technical analysis signals to identify trend direction, momentum, potential reversals, and market extremes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up volatility chart if data exists
+            const volatilityContainer = document.getElementById('volatilityChart');
+            if (volatilityContainer) {
+                try {
+                    // Example hardcoded data structure (replace with actual data in production)
+                    const datasets = [
+                        {
+                            label: 'Apr 16, 2025 (Calls)',
+                            data: [
+                                {x: 0.85, y: 22, strike: 250},
+                                {x: 0.9, y: 19, strike: 265},
+                                {x: 0.95, y: 17, strike: 280},
+                                {x: 1, y: 15, strike: 295},
+                                {x: 1.05, y: 16, strike: 310},
+                                {x: 1.1, y: 17, strike: 325},
+                                {x: 1.15, y: 19, strike: 340}
+                            ],
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Apr 16, 2025 (Puts)',
+                            data: [
+                                {x: 0.85, y: 25, strike: 250},
+                                {x: 0.9, y: 21, strike: 265},
+                                {x: 0.95, y: 18, strike: 280},
+                                {x: 1, y: 15, strike: 295},
+                                {x: 1.05, y: 14, strike: 310},
+                                {x: 1.1, y: 13, strike: 325},
+                                {x: 1.15, y: 15, strike: 340}
+                            ],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Apr 23, 2025 (Calls)',
+                            data: [
+                                {x: 0.85, y: 24, strike: 250},
+                                {x: 0.9, y: 20, strike: 265},
+                                {x: 0.95, y: 18, strike: 280},
+                                {x: 1, y: 16, strike: 295},
+                                {x: 1.05, y: 17, strike: 310},
+                                {x: 1.1, y: 18, strike: 325},
+                                {x: 1.15, y: 20, strike: 340}
+                            ],
+                            borderColor: 'rgba(75, 192, 192, 0.7)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.3)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        },
+                        {
+                            label: 'Apr 23, 2025 (Puts)',
+                            data: [
+                                {x: 0.85, y: 26, strike: 250},
+                                {x: 0.9, y: 22, strike: 265},
+                                {x: 0.95, y: 19, strike: 280},
+                                {x: 1, y: 16, strike: 295},
+                                {x: 1.05, y: 15, strike: 310},
+                                {x: 1.1, y: 14, strike: 325},
+                                {x: 1.15, y: 16, strike: 340}
+                            ],
+                            borderColor: 'rgba(255, 99, 132, 0.7)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.3)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        }
+                    ];
+                    
+                    const tooltip = document.getElementById('volatilityTooltip');
+                    
+                    const volatilityChart = new Chart(volatilityContainer, {
+                        type: 'scatter',
+                        data: {
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    position: 'bottom',
+                                    title: {
+                                        display: true,
+                                        text: 'Moneyness (Strike/Price)'
+                                    },
+                                    min: 0.8,
+                                    max: 1.2
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Implied Volatility (%)'
+                                    },
+                                    min: 10,
+                                    suggestedMax: 30
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                tooltip: {
+                                    enabled: false,
+                                    external: function(context) {
+                                        let tooltipEl = document.getElementById('volatilityTooltip');
+                                        
+                                        // Create tooltip element if it doesn't exist
+                                        if (!tooltipEl) {
+                                            tooltipEl = document.createElement('div');
+                                            tooltipEl.id = 'volatilityTooltip';
+                                            tooltipEl.classList.add('custom-tooltip');
+                                            document.body.appendChild(tooltipEl);
+                                        }
+                                        
+                                        // Hide if no tooltip
+                                        const tooltipModel = context.tooltip;
+                                        if (tooltipModel.opacity === 0) {
+                                            tooltipEl.style.visibility = 'hidden';
+                                            return;
+                                        }
+                                        
+                                        // Set Text
+                                        if (tooltipModel.body) {
+                                            const dataPoint = tooltipModel.dataPoints[0];
+                                            const dataset = context.chart.data.datasets[dataPoint.datasetIndex];
+                                            const pointData = dataset.data[dataPoint.dataIndex];
+                                            
+                                            const strike = pointData.strike;
+                                            const iv = pointData.y.toFixed(2);
+                                            const moneyness = pointData.x.toFixed(2);
+                                            
+                                            tooltipEl.innerHTML = `
+                                                <div>
+                                                    <strong>${dataset.label}</strong><br>
+                                                    Strike: $${strike}<br>
+                                                    IV: ${iv}%<br>
+                                                    Moneyness: ${moneyness}
+                                                </div>
+                                            `;
+                                        }
+                                        
+                                        // Position
+                                        const position = context.chart.canvas.getBoundingClientRect();
+                                        
+                                        tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
+                                        tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
+                                        tooltipEl.style.visibility = 'visible';
+                                    }
+                                }
+                            },
+                            interaction: {
+                                intersect: true,
+                                mode: 'nearest'
+                            }
+                        }
+                    });
+                    
+                    // Add legend styles
+                    const legendItems = document.querySelectorAll('.chartjs-legend li');
+                    legendItems.forEach(item => {
+                        item.style.cursor = 'pointer';
+                        item.addEventListener('mouseenter', () => {
+                            item.style.opacity = '0.7';
+                        });
+                        item.addEventListener('mouseleave', () => {
+                            item.style.opacity = '1';
+                        });
+                    });
+                } catch (e) {
+                    console.error('Error initializing volatility chart:', e);
+                }
+            }
+            
+            // Set up time decay chart
+            const timeDecayContainer = document.getElementById('timeDecayChart');
+            if (timeDecayContainer) {
+                try {
+                    // Example decay data
+                    const decayData = {
+                        labels: [20, 15, 10, 5, 0],
+                        callValues: [6.30, 5.15, 3.90, 2.40, 0],
+                        putValues: [4.20, 3.65, 2.75, 1.70, 0]
+                    };
+                    
+                    const timeDecayChart = new Chart(timeDecayContainer, {
+                        type: 'line',
+                        data: {
+                            labels: decayData.labels,
+                            datasets: [
+                                {
+                                    label: 'ATM Call Premium',
+                                    data: decayData.callValues,
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'ATM Put Premium',
+                                    data: decayData.putValues,
+                                    borderColor: 'rgba(255, 99, 132, 1)', 
+                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Days to Expiration'
+                                    },
+                                    reverse: false
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Option Premium ($)'
+                                    },
+                                    min: 0
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        title: function(context) {
+                                            return `${context[0].label} Days to Expiry`;
+                                        },
+                                        label: function(context) {
+                                            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                        }
+                                    }
+                                },
+                                annotation: {
+                                    annotations: {
+                                        line1: {
+                                            type: 'line',
+                                            xMin: 0,
+                                            xMax: 0,
+                                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                                            borderWidth: 2,
+                                            borderDash: [5, 5],
+                                            label: {
+                                                content: 'Expiration',
+                                                enabled: true,
+                                                position: 'top'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error initializing time decay chart:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

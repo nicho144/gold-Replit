@@ -1,0 +1,53 @@
+/* Custom styles for Futures Market Analysis */
+
+.analysis-form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.result-container {
+    margin-top: 2rem;
+}
+
+.jumbotron {
+    padding: 2rem;
+    background-color: var(--bs-dark);
+    border-radius: 0.5rem;
+    border: 1px solid var(--bs-secondary);
+}
+
+.api-endpoint {
+    background-color: var(--bs-gray-800);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-family: monospace;
+}
+
+.code-block {
+    background-color: var(--bs-gray-800);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.nav-tabs .nav-link {
+    color: var(--bs-light);
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-white);
+    border-color: var(--bs-secondary);
+}
+
+.key-concept {
+    border-left: 3px solid var(--bs-info);
+    padding-left: 1rem;
+    margin: 1rem 0;
+}
+
+.ticker-examples {
+    font-size: 0.9rem;
+    color: var(--bs-gray-500);
+}

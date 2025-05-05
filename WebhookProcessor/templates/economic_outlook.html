@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Economic Outlook{% endblock %}
+
+{% block content %}
+<div class="jumbotron mb-4">
+    <h1 class="display-5">Economic Outlook</h1>
+    <p class="lead">Analysis of current economic expectations and impact on gold</p>
+    <hr class="my-4">
+    <p>Data timestamp: {{ data.timestamp|default('N/A') }}</p>
+</div>
+
+<div class="row">
+    <!-- Economic Indicators -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h4>Economic Indicators</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Indicator</th>
+                                <th>Value</th>
+                                <th>Change</th>
+                                <th>Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if data.indicators %}
+                                {% for indicator in data.indicators %}
+                                <tr>
+                                    <td>{{ indicator.name }}</td>
+                                    <td>{{ indicator.value }}</td>
+                                    <td class="text-{{ 'success' if indicator.change > 0 else 'danger' if indicator.change < 0 else 'secondary' }}">
+                                        {{ indicator.change|round(2) }}%
+                                    </td>
+                                    <td>{{ indicator.impact }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No indicator data available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Economic Analysis -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h4>Economic Analysis</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Current Economic Climate</h5>
+                    <p>{{ data.economic_climate|default('Data not available') }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Central Bank Outlook</h5>
+                    <p>{{ data.central_bank_outlook|default('Data not available') }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Inflation Expectations</h5>
+                    <p>{{ data.inflation_expectations|default('Data not available') }}</p>
+                </div>
+                
+                <div class="card bg-dark border-secondary mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Gold Market Implications</h5>
+                    </div>
+                    <ul class="list-group list-group-flush bg-dark">
+                        {% if data.gold_implications %}
+                            {% for implication in data.gold_implications %}
+                                <li class="list-group-item bg-dark border-secondary">{{ implication }}</li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item bg-dark border-secondary">Data not available</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Economic Forecasts -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h4>Economic Forecasts</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if data.forecasts %}
+                        {% for forecast in data.forecasts %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card bg-dark border-secondary h-100">
+                                <div class="card-header">
+                                    <h5 class="mb-0">{{ forecast.name }}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>{{ forecast.description }}</p>
+                                    <h6>Probability: {{ forecast.probability }}%</h6>
+                                    <h6>Gold Impact: 
+                                        <span class="text-{{ 'success' if forecast.gold_impact == 'positive' else 'danger' if forecast.gold_impact == 'negative' else 'warning' }}">
+                                            {{ forecast.gold_impact|title }}
+                                        </span>
+                                    </h6>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-12">
+                            <p class="text-center">No forecast data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Other Analysis Endpoints -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h3 class="mb-0">Other Analysis Endpoints</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/market/premarket" class="btn btn-outline-primary">Premarket Data</a>
+                    <a href="/market/gold/term-structure" class="btn btn-outline-primary">Gold Term Structure</a>
+                    <a href="/market/real-rates" class="btn btn-outline-primary">Real Interest Rates</a>
+                    <a href="/market/sentiment" class="btn btn-outline-primary">Market Sentiment</a>
+                    <a href="/market/gold-cycle" class="btn btn-outline-primary">Gold Cycle Analysis</a>
+                    <a href="/market/economic" class="btn btn-outline-primary">Economic Outlook</a>
+                    <a href="/market/comprehensive" class="btn btn-outline-success">Comprehensive Analysis</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Raw Data Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">
+                <h4>Raw Data</h4>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                    Toggle
+                </button>
+            </div>
+            <div class="collapse" id="rawDataCollapse">
+                <div class="card-body">
+                    <pre id="json-display"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pretty-print JSON
+    const jsonData = {{ data|tojson }};
+    const jsonDisplay = document.getElementById('json-display');
+    
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+            json = JSON.stringify(json, undefined, 2);
+        }
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'json-number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'json-key';
+                } else {
+                    cls = 'json-string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'json-boolean';
+            } else if (/null/.test(match)) {
+                cls = 'json-null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+    
+    jsonDisplay.innerHTML = syntaxHighlight(jsonData);
+</script>
+{% endblock %}
